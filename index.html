@@ -6,7 +6,7 @@
   <title>School Poster Generator</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: 'Noto Sans Malayalam', sans-serif;
       background: #eee;
       margin: 0;
       padding: 1rem;
@@ -18,6 +18,7 @@
       height: auto;
       border: 1px solid #ccc;
       margin-top: 1rem;
+      background: white;
     }
 
     #controls {
@@ -28,24 +29,42 @@
     input[type="text"] {
       margin: 0.5rem;
       padding: 0.5rem;
+      width: 80%;
+      max-width: 400px;
     }
 
     button {
       padding: 0.5rem 1rem;
       font-size: 1rem;
       margin: 0.5rem;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #45a049;
     }
 
     #crop-container {
       display: none;
       margin: 1rem auto;
+      max-width: 500px;
     }
 
     #crop-image {
       max-width: 100%;
     }
-  </style>
 
+    .loading {
+      display: none;
+      color: #666;
+      margin: 1rem;
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
 </head>
 <body>
@@ -57,14 +76,16 @@
     <br/>
     <input type="text" id="nameInput" placeholder="പേര് എഴുതുക" />
     <br/>
-    <button onclick="generatePoster()">Generate Poster</button>
-    <button onclick="downloadImage()">Download</button>
+    <button onclick="generatePoster()">പോസ്റ്റർ തയ്യാറാക്കുക</button>
+    <button onclick="downloadImage()">ഡൗൺലോഡ് ചെയ്യുക</button>
+    <p id="loadingText" class="loading">പ്രവർത്തിക്കുന്നു... കാത്തിരിക്കുക</p>
+    <p id="errorText" class="loading" style="color: red;"></p>
   </div>
 
   <div id="crop-container">
     <img id="crop-image" />
     <br/>
-    <button onclick="cropImage()">Crop & Continue</button>
+    <button onclick="cropImage()">ക്രോപ്പ് ചെയ്യുക</button>
   </div>
 
   <canvas id="posterCanvas" width="898" height="670"></canvas>
@@ -76,27 +97,79 @@
     const nameInput = document.getElementById("nameInput");
     const imageUpload = document.getElementById("imageUpload");
     const cropContainer = document.getElementById("crop-container");
-    const cropImage = document.getElementById("crop-image");
+    const cropImgElement = document.getElementById("crop-image");
+    const loadingText = document.getElementById("loadingText");
+    const errorText = document.getElementById("errorText");
+    
     let cropper = null;
     let finalImage = null;
+    let templateImage = new Image();
 
-    const template = new Image();
-    template.src = "background.png"; // Replace with uploaded path or host path
-
-    template.onload = () => {
-      ctx.drawImage(template, 0, 0);
+    // Define the areas where image and text should be placed
+    const IMAGE_AREA = {
+      x: 191,
+      y: 220, 
+      width: 515,
+      height: 380
     };
+    
+    const TEXT_AREA = {
+      x: 140,
+      y: 567,
+      width: 620,
+      height: 65
+    };
+
+    // Removed the SCHOOL_TEXT_BOX definition
+    // const SCHOOL_TEXT_BOX = {
+    //   x: 191,
+    //   y: 150,
+    //   width: 515,
+    //   height: 60,
+    //   text: "എന്റെ വിദ്യാലയം\nഎന്റെ അഭിമാനം"
+    // };
+
+    // Load the background image
+    templateImage.src = "background.png";
+    templateImage.onload = function() {
+      drawEverything();
+    };
+    templateImage.onerror = function() {
+      errorText.textContent = "പിശക്: പശ്ചാത്തല ചിത്രം കണ്ടെത്തിയില്ല";
+      errorText.style.display = "block";
+      createFallbackBackground();
+    };
+
+    function createFallbackBackground() {
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw placeholder for image area
+      ctx.fillStyle = "#f0f0f0";
+      ctx.fillRect(IMAGE_AREA.x, IMAGE_AREA.y, IMAGE_AREA.width, IMAGE_AREA.height);
+      
+      // Draw placeholder for text area
+      ctx.fillStyle = "#ffff00";
+      ctx.fillRect(TEXT_AREA.x, TEXT_AREA.y, TEXT_AREA.width, TEXT_AREA.height);
+      
+      // Removed the SCHOOL_TEXT_BOX placeholder drawing
+      // ctx.fillStyle = "#add8e6"; // Light blue
+      // ctx.fillRect(SCHOOL_TEXT_BOX.x, SCHOOL_TEXT_BOX.y, SCHOOL_TEXT_BOX.width, SCHOOL_TEXT_BOX.height);
+    }
 
     imageUpload.addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (!file) return;
+      
       const reader = new FileReader();
       reader.onload = () => {
-        cropImage.src = reader.result;
+        cropImgElement.src = reader.result;
         cropContainer.style.display = "block";
         if (cropper) cropper.destroy();
-        cropper = new Cropper(cropImage, {
-          aspectRatio: 3/4,
+        
+        // Set cropping aspect ratio to match our image area
+        cropper = new Cropper(cropImgElement, {
+          aspectRatio: IMAGE_AREA.width / IMAGE_AREA.height,
           viewMode: 1,
         });
       };
@@ -104,63 +177,181 @@
     });
 
     function cropImage() {
-      finalImage = cropper.getCroppedCanvas().toDataURL();
-      cropContainer.style.display = "none";
-      drawEverything();
+      loadingText.style.display = "block";
+      errorText.style.display = "none";
+      
+      setTimeout(() => {
+        try {
+          finalImage = cropper.getCroppedCanvas().toDataURL();
+          cropContainer.style.display = "none";
+          drawEverything();
+        } catch (e) {
+          errorText.textContent = "പിശക്: ചിത്രം പ്രോസസ്സ് ചെയ്യുന്നതിൽ പ്രശ്നമുണ്ടായി";
+          errorText.style.display = "block";
+        } finally {
+          loadingText.style.display = "none";
+        }
+      }, 100);
     }
 
     function drawEverything() {
+      // Clear canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(template, 0, 0);
-
-      // Draw image inside white box: x=191, y=159, w=515, h=380
+      
+      // Draw background (if loaded)
+      if (templateImage.complete && templateImage.naturalWidth !== 0) {
+        ctx.drawImage(templateImage, 0, 0, canvas.width, canvas.height);
+      } else {
+        createFallbackBackground();
+      }
+      
+      // Removed the call to drawSchoolText()
+      // drawSchoolText();
+      
+      // Draw the uploaded image (if available)
       if (finalImage) {
         const img = new Image();
         img.onload = () => {
-          const maxW = 515;
-          const maxH = 380;
-          let w = img.width;
-          let h = img.height;
-          const ratio = Math.min(maxW / w, maxH / h);
-          w *= ratio;
-          h *= ratio;
-          const x = 191 + (maxW - w) / 2;
-          const y = 159 + (maxH - h) / 2;
-          ctx.drawImage(img, x, y, w, h);
+          // Calculate dimensions to fit within the image area while maintaining aspect ratio
+          const containerRatio = IMAGE_AREA.width / IMAGE_AREA.height;
+          const imageRatio = img.width / img.height;
+          
+          let drawWidth, drawHeight;
+          
+          if (imageRatio > containerRatio) {
+            // Image is wider than container
+            drawWidth = IMAGE_AREA.width;
+            drawHeight = IMAGE_AREA.width / imageRatio;
+          } else {
+            // Image is taller than container
+            drawHeight = IMAGE_AREA.height;
+            drawWidth = IMAGE_AREA.height * imageRatio;
+          }
+          
+          // Calculate position to center the image
+          const x = IMAGE_AREA.x + (IMAGE_AREA.width - drawWidth) / 2;
+          const y = IMAGE_AREA.y + (IMAGE_AREA.height - drawHeight) / 2;
+          
+          // Draw the image
+          ctx.drawImage(img, x, y, drawWidth, drawHeight);
+          
+          // Draw the name after image is loaded
+          drawName();
+        };
+        img.onerror = () => {
+          errorText.textContent = "പിശക്: ചിത്രം ലോഡ് ചെയ്യുന്നതിൽ പ്രശ്നമുണ്ടായി";
+          errorText.style.display = "block";
         };
         img.src = finalImage;
+      } else {
+        drawName();
       }
+    }
 
-      // Draw name: yellow box at x=140, y=567, w=620, h=65
+    // Removed the drawSchoolText() function definition
+    // function drawSchoolText() {
+    //   // Draw light blue background
+    //   ctx.fillStyle = "#add8e6";
+    //   ctx.fillRect(SCHOOL_TEXT_BOX.x, SCHOOL_TEXT_BOX.y, SCHOOL_TEXT_BOX.width, SCHOOL_TEXT_BOX.height);
+      
+    //   // Draw the text in yellow
+    //   ctx.fillStyle = "#ffff00";
+    //   ctx.textAlign = "center";
+    //   ctx.textBaseline = "middle";
+      
+    //   // Split the text into two lines
+    //   const lines = SCHOOL_TEXT_BOX.text.split("\n");
+      
+    //   // Calculate font size that fits
+    //   let fontSize = 24;
+    //   let lineHeight = fontSize * 1.2;
+    //   let totalHeight = lines.length * lineHeight;
+      
+    //   // Make sure text fits vertically
+    //   while (totalHeight > SCHOOL_TEXT_BOX.height - 10 && fontSize > 10) {
+    //     fontSize--;
+    //     lineHeight = fontSize * 1.2;
+    //     totalHeight = lines.length * lineHeight;
+    //   }
+      
+    //   // Draw each line
+    //   ctx.font = `bold ${fontSize}px 'Noto Sans Malayalam', sans-serif`;
+    //   lines.forEach((line, i) => {
+    //     ctx.fillText(
+    //       line,
+    //       SCHOOL_TEXT_BOX.x + SCHOOL_TEXT_BOX.width / 2,
+    //       SCHOOL_TEXT_BOX.y + SCHOOL_TEXT_BOX.height / 2 - (lines.length * lineHeight) / 2 + i * lineHeight + lineHeight / 2
+    //     );
+    //   });
+    // }
+
+    function drawName() {
       const text = nameInput.value.trim();
       if (text) {
-        const maxWidth = 620;
-        const maxHeight = 65;
-        let fontSize = 60;
+        // First draw the yellow background
+        ctx.fillStyle = "#ffff00";
+        ctx.fillRect(TEXT_AREA.x, TEXT_AREA.y, TEXT_AREA.width, TEXT_AREA.height);
+        
+        // Then draw the text
+        ctx.fillStyle = "#000";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillStyle = "#000";
+        
+        // Calculate maximum font size that fits
+        let fontSize = 40;
+        let textWidth;
         do {
-          ctx.font = `${fontSize}px sans-serif`;
-          const metrics = ctx.measureText(text);
-          if (metrics.width <= maxWidth && fontSize <= maxHeight) break;
+          ctx.font = `bold ${fontSize}px 'Noto Sans Malayalam', sans-serif`;
+          textWidth = ctx.measureText(text).width;
+          if (textWidth <= TEXT_AREA.width - 40) break; // 20px padding on each side
           fontSize--;
         } while (fontSize > 10);
-        ctx.fillText(text, 140 + 620 / 2, 567 + 65 / 2);
+        
+        // Ensure text stays within the yellow box vertically
+        if (fontSize > TEXT_AREA.height - 10) {
+          fontSize = TEXT_AREA.height - 10;
+        }
+        
+        // Redefine font with final size
+        ctx.font = `bold ${fontSize}px 'Noto Sans Malayalam', sans-serif`;
+        
+        // Draw text centered in the yellow box
+        ctx.fillText(
+          text, 
+          TEXT_AREA.x + TEXT_AREA.width / 2, 
+          TEXT_AREA.y + TEXT_AREA.height / 2
+        );
       }
     }
 
     function generatePoster() {
-      drawEverything();
+      loadingText.style.display = "block";
+      errorText.style.display = "none";
+      
+      setTimeout(() => {
+        try {
+          drawEverything();
+        } catch (e) {
+          errorText.textContent = "പിശക്: പോസ്റ്റർ തയ്യാറാക്കുന്നതിൽ പ്രശ്നമുണ്ടായി";
+          errorText.style.display = "block";
+        } finally {
+          loadingText.style.display = "none";
+        }
+      }, 100);
     }
 
     function downloadImage() {
+      if (!finalImage && !nameInput.value.trim()) {
+        errorText.textContent = "പിശക്: ഡൗൺലോഡ് ചെയ്യാൻ ഒരു ചിത്രമോ പേരോ നൽകുക";
+        errorText.style.display = "block";
+        return;
+      }
+      
       const link = document.createElement("a");
       link.download = "school_poster.png";
       link.href = canvas.toDataURL();
       link.click();
     }
   </script>
-
 </body>
 </html>
