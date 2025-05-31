@@ -1,92 +1,166 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ml">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Photo Generator</title>
+  <title>School Poster Generator</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: sans-serif;
+      background: #eee;
+      margin: 0;
+      padding: 1rem;
       text-align: center;
     }
 
-    #preview {
-      position: relative;
-      display: inline-block;
-      margin-top: 20px;
-    }
-
-    #baseImage {
+    canvas {
       max-width: 100%;
       height: auto;
+      border: 1px solid #ccc;
+      margin-top: 1rem;
     }
 
-    #uploadedPhoto {
-      position: absolute;
-      top: 148px; /* Adjust this value */
-      left: 104px; /* Adjust this value */
-      width: 300px;
-      height: 360px;
-      object-fit: contain;
+    #controls {
+      margin-bottom: 1rem;
     }
 
-    #nameOverlay {
-      position: absolute;
-      top: 320px; /* Vertical center of the box */
-      left: 254px;
-      transform: translateX(-50%);
-      width: 280px;
-      color: black;
-      font-size: 22px;
-      font-weight: bold;
-      text-align: center;
-      font-family: 'Noto Sans Malayalam', sans-serif;
+    input[type="file"],
+    input[type="text"] {
+      margin: 0.5rem;
+      padding: 0.5rem;
+    }
+
+    button {
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      margin: 0.5rem;
+    }
+
+    #crop-container {
+      display: none;
+      margin: 1rem auto;
+    }
+
+    #crop-image {
+      max-width: 100%;
     }
   </style>
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
 </head>
 <body>
-  <h2>🖼️ Photo & Name Generator</h2>
-  <form id="uploadForm">
-    <label>Name: <input type="text" id="nameInput" required></label><br><br>
-    <label>Photo (optional): <input type="file" id="photoInput" accept="image/*"></label><br><br>
-    <button type="submit">Generate</button>
-  </form>
 
-  <div id="preview" style="display: none;">
-    <img id="baseImage" src="background.png" alt="Base">
-    <img id="uploadedPhoto" alt="Uploaded" />
-    <div id="nameOverlay"></div>
+  <h2>📸 സ്കൂൾ പോസ്റ്റർ ജനറേറ്റർ</h2>
+
+  <div id="controls">
+    <input type="file" id="imageUpload" accept="image/*" />
+    <br/>
+    <input type="text" id="nameInput" placeholder="പേര് എഴുതുക" />
+    <br/>
+    <button onclick="generatePoster()">Generate Poster</button>
+    <button onclick="downloadImage()">Download</button>
   </div>
 
+  <div id="crop-container">
+    <img id="crop-image" />
+    <br/>
+    <button onclick="cropImage()">Crop & Continue</button>
+  </div>
+
+  <canvas id="posterCanvas" width="898" height="670"></canvas>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <script>
-    const form = document.getElementById('uploadForm');
-    const photoInput = document.getElementById('photoInput');
-    const uploadedPhoto = document.getElementById('uploadedPhoto');
-    const nameOverlay = document.getElementById('nameOverlay');
-    const preview = document.getElementById('preview');
+    const canvas = document.getElementById("posterCanvas");
+    const ctx = canvas.getContext("2d");
+    const nameInput = document.getElementById("nameInput");
+    const imageUpload = document.getElementById("imageUpload");
+    const cropContainer = document.getElementById("crop-container");
+    const cropImage = document.getElementById("crop-image");
+    let cropper = null;
+    let finalImage = null;
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
+    const template = new Image();
+    template.src = "background.png"; // Replace with uploaded path or host path
 
-      const name = document.getElementById('nameInput').value.trim();
-      const file = photoInput.files[0];
+    template.onload = () => {
+      ctx.drawImage(template, 0, 0);
+    };
 
-      nameOverlay.textContent = name;
-      preview.style.display = 'inline-block';
-
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-          uploadedPhoto.src = event.target.result;
-          uploadedPhoto.style.display = 'block';
-          nameOverlay.style.top = '520px'; // Show name below image
-        };
-        reader.readAsDataURL(file);
-      } else {
-        uploadedPhoto.style.display = 'none';
-        nameOverlay.style.top = '320px'; // Center name in photo box
-      }
+    imageUpload.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        cropImage.src = reader.result;
+        cropContainer.style.display = "block";
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropImage, {
+          aspectRatio: 3/4,
+          viewMode: 1,
+        });
+      };
+      reader.readAsDataURL(file);
     });
+
+    function cropImage() {
+      finalImage = cropper.getCroppedCanvas().toDataURL();
+      cropContainer.style.display = "none";
+      drawEverything();
+    }
+
+    function drawEverything() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(template, 0, 0);
+
+      // Draw image inside white box: x=191, y=159, w=515, h=380
+      if (finalImage) {
+        const img = new Image();
+        img.onload = () => {
+          const maxW = 515;
+          const maxH = 380;
+          let w = img.width;
+          let h = img.height;
+          const ratio = Math.min(maxW / w, maxH / h);
+          w *= ratio;
+          h *= ratio;
+          const x = 191 + (maxW - w) / 2;
+          const y = 159 + (maxH - h) / 2;
+          ctx.drawImage(img, x, y, w, h);
+        };
+        img.src = finalImage;
+      }
+
+      // Draw name: yellow box at x=140, y=567, w=620, h=65
+      const text = nameInput.value.trim();
+      if (text) {
+        const maxWidth = 620;
+        const maxHeight = 65;
+        let fontSize = 60;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#000";
+        do {
+          ctx.font = `${fontSize}px sans-serif`;
+          const metrics = ctx.measureText(text);
+          if (metrics.width <= maxWidth && fontSize <= maxHeight) break;
+          fontSize--;
+        } while (fontSize > 10);
+        ctx.fillText(text, 140 + 620 / 2, 567 + 65 / 2);
+      }
+    }
+
+    function generatePoster() {
+      drawEverything();
+    }
+
+    function downloadImage() {
+      const link = document.createElement("a");
+      link.download = "school_poster.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    }
   </script>
+
 </body>
 </html>
