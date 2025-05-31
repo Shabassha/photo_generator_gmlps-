@@ -69,12 +69,16 @@
 </head>
 <body>
 
-  <h2>📸 ജി എം ൽ പി എസ്  വടക്കാങ്ങര</h2>
+  <h2>📸 സ്കൂൾ പോസ്റ്റർ ജനറേറ്റർ</h2>
 
   <div id="controls">
     <input type="file" id="imageUpload" accept="image/*" />
     <br/>
-    <input type="text" id="nameInput" placeholder="കുട്ടിയുടെ പേര് എഴുതുക" />
+    <div id="crop-controls" style="display: none;">
+      <button onclick="cropImage()">ക്രോപ്പ് ചെയ്യുക</button>
+    </div>
+    <br/>
+    <input type="text" id="nameInput" placeholder="പേര് എഴുതുക" />
     <br/>
     <button onclick="generatePoster()">പോസ്റ്റർ തയ്യാറാക്കുക</button>
     <button onclick="downloadImage()">ഡൗൺലോഡ് ചെയ്യുക</button>
@@ -84,9 +88,7 @@
 
   <div id="crop-container">
     <img id="crop-image" />
-    <br/>
-    <button onclick="cropImage()">ക്രോപ്പ് ചെയ്യുക</button>
-  </div>
+    </div>
 
   <canvas id="posterCanvas" width="898" height="670"></canvas>
 
@@ -98,6 +100,7 @@
     const imageUpload = document.getElementById("imageUpload");
     const cropContainer = document.getElementById("crop-container");
     const cropImgElement = document.getElementById("crop-image");
+    const cropControls = document.getElementById("crop-controls"); // New element for crop button
     const loadingText = document.getElementById("loadingText");
     const errorText = document.getElementById("errorText");
     
@@ -119,15 +122,6 @@
       width: 620,
       height: 65
     };
-
-    // Removed the SCHOOL_TEXT_BOX definition
-    // const SCHOOL_TEXT_BOX = {
-    //   x: 191,
-    //   y: 150,
-    //   width: 515,
-    //   height: 60,
-    //   text: "എന്റെ വിദ്യാലയം\nഎന്റെ അഭിമാനം"
-    // };
 
     // Load the background image
     templateImage.src = "background.png";
@@ -151,10 +145,6 @@
       // Draw placeholder for text area
       ctx.fillStyle = "#ffff00";
       ctx.fillRect(TEXT_AREA.x, TEXT_AREA.y, TEXT_AREA.width, TEXT_AREA.height);
-      
-      // Removed the SCHOOL_TEXT_BOX placeholder drawing
-      // ctx.fillStyle = "#add8e6"; // Light blue
-      // ctx.fillRect(SCHOOL_TEXT_BOX.x, SCHOOL_TEXT_BOX.y, SCHOOL_TEXT_BOX.width, SCHOOL_TEXT_BOX.height);
     }
 
     imageUpload.addEventListener("change", (e) => {
@@ -165,12 +155,12 @@
       reader.onload = () => {
         cropImgElement.src = reader.result;
         cropContainer.style.display = "block";
+        cropControls.style.display = "block"; // Show the crop button controls
         if (cropper) cropper.destroy();
         
-        // Set cropping aspect ratio to match our image area
+        // Removed aspectRatio to allow free cropping
         cropper = new Cropper(cropImgElement, {
-          aspectRatio: IMAGE_AREA.width / IMAGE_AREA.height,
-          viewMode: 1,
+          viewMode: 1, // Restrict the crop box to not exceed the canvas
         });
       };
       reader.readAsDataURL(file);
@@ -182,8 +172,10 @@
       
       setTimeout(() => {
         try {
+          // Get cropped canvas data URL
           finalImage = cropper.getCroppedCanvas().toDataURL();
           cropContainer.style.display = "none";
+          cropControls.style.display = "none"; // Hide the crop button controls
           drawEverything();
         } catch (e) {
           errorText.textContent = "പിശക്: ചിത്രം പ്രോസസ്സ് ചെയ്യുന്നതിൽ പ്രശ്നമുണ്ടായി";
@@ -205,34 +197,30 @@
         createFallbackBackground();
       }
       
-      // Removed the call to drawSchoolText()
-      // drawSchoolText();
-      
       // Draw the uploaded image (if available)
       if (finalImage) {
         const img = new Image();
         img.onload = () => {
-          // Calculate dimensions to fit within the image area while maintaining aspect ratio
-          const containerRatio = IMAGE_AREA.width / IMAGE_AREA.height;
+          // Calculate dimensions to fit within the IMAGE_AREA while maintaining aspect ratio
           const imageRatio = img.width / img.height;
-          
           let drawWidth, drawHeight;
-          
-          if (imageRatio > containerRatio) {
-            // Image is wider than container
-            drawWidth = IMAGE_AREA.width;
-            drawHeight = IMAGE_AREA.width / imageRatio;
-          } else {
-            // Image is taller than container
+          let x, y;
+
+          // Determine if image should be constrained by width or height
+          if (IMAGE_AREA.width / IMAGE_AREA.height > imageRatio) {
+            // Image is relatively taller than the container, constrain by height
             drawHeight = IMAGE_AREA.height;
             drawWidth = IMAGE_AREA.height * imageRatio;
+          } else {
+            // Image is relatively wider than the container, constrain by width
+            drawWidth = IMAGE_AREA.width;
+            drawHeight = IMAGE_AREA.width / imageRatio;
           }
           
-          // Calculate position to center the image
-          const x = IMAGE_AREA.x + (IMAGE_AREA.width - drawWidth) / 2;
-          const y = IMAGE_AREA.y + (IMAGE_AREA.height - drawHeight) / 2;
+          // Calculate position to center the image within IMAGE_AREA
+          x = IMAGE_AREA.x + (IMAGE_AREA.width - drawWidth) / 2;
+          y = IMAGE_AREA.y + (IMAGE_AREA.height - drawHeight) / 2;
           
-          // Draw the image
           ctx.drawImage(img, x, y, drawWidth, drawHeight);
           
           // Draw the name after image is loaded
@@ -247,43 +235,6 @@
         drawName();
       }
     }
-
-    // Removed the drawSchoolText() function definition
-    // function drawSchoolText() {
-    //   // Draw light blue background
-    //   ctx.fillStyle = "#add8e6";
-    //   ctx.fillRect(SCHOOL_TEXT_BOX.x, SCHOOL_TEXT_BOX.y, SCHOOL_TEXT_BOX.width, SCHOOL_TEXT_BOX.height);
-      
-    //   // Draw the text in yellow
-    //   ctx.fillStyle = "#ffff00";
-    //   ctx.textAlign = "center";
-    //   ctx.textBaseline = "middle";
-      
-    //   // Split the text into two lines
-    //   const lines = SCHOOL_TEXT_BOX.text.split("\n");
-      
-    //   // Calculate font size that fits
-    //   let fontSize = 24;
-    //   let lineHeight = fontSize * 1.2;
-    //   let totalHeight = lines.length * lineHeight;
-      
-    //   // Make sure text fits vertically
-    //   while (totalHeight > SCHOOL_TEXT_BOX.height - 10 && fontSize > 10) {
-    //     fontSize--;
-    //     lineHeight = fontSize * 1.2;
-    //     totalHeight = lines.length * lineHeight;
-    //   }
-      
-    //   // Draw each line
-    //   ctx.font = `bold ${fontSize}px 'Noto Sans Malayalam', sans-serif`;
-    //   lines.forEach((line, i) => {
-    //     ctx.fillText(
-    //       line,
-    //       SCHOOL_TEXT_BOX.x + SCHOOL_TEXT_BOX.width / 2,
-    //       SCHOOL_TEXT_BOX.y + SCHOOL_TEXT_BOX.height / 2 - (lines.length * lineHeight) / 2 + i * lineHeight + lineHeight / 2
-    //     );
-    //   });
-    // }
 
     function drawName() {
       const text = nameInput.value.trim();
