@@ -1,117 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Photo & Name Generator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Photo Generator</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: Arial, sans-serif;
       text-align: center;
-      margin: 0;
-      padding: 20px;
     }
 
-    input, button {
-      margin: 10px auto;
-      display: block;
-      width: 90%;
-      max-width: 400px;
-      padding: 10px;
-      font-size: 16px;
+    #preview {
+      position: relative;
+      display: inline-block;
+      margin-top: 20px;
     }
 
-    canvas {
-      display: block;
-      margin: 20px auto;
+    #baseImage {
       max-width: 100%;
       height: auto;
-      border: 1px solid #ccc;
     }
 
-    #downloadLink button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      cursor: pointer;
+    #uploadedPhoto {
+      position: absolute;
+      top: 148px; /* Adjust this value */
+      left: 104px; /* Adjust this value */
+      width: 300px;
+      height: 360px;
+      object-fit: contain;
+    }
+
+    #nameOverlay {
+      position: absolute;
+      top: 320px; /* Vertical center of the box */
+      left: 254px;
+      transform: translateX(-50%);
+      width: 280px;
+      color: black;
+      font-size: 22px;
+      font-weight: bold;
+      text-align: center;
+      font-family: 'Noto Sans Malayalam', sans-serif;
     }
   </style>
 </head>
 <body>
+  <h2>🖼️ Photo & Name Generator</h2>
+  <form id="uploadForm">
+    <label>Name: <input type="text" id="nameInput" required></label><br><br>
+    <label>Photo (optional): <input type="file" id="photoInput" accept="image/*"></label><br><br>
+    <button type="submit">Generate</button>
+  </form>
 
-  <h2>📸 Generate Your School Frame</h2>
-
-  <input type="file" id="photoInput" accept="image/*">
-  <input type="text" id="nameInput" placeholder="Enter your name">
-  <button onclick="generateImage()">Generate Image</button>
-
-  <canvas id="finalCanvas" width="897" height="672"></canvas>
-
-  <a id="downloadLink" download="Generated_Image.png" style="display: none;">
-    <button>Download Image</button>
-  </a>
+  <div id="preview" style="display: none;">
+    <img id="baseImage" src="background.png" alt="Base">
+    <img id="uploadedPhoto" alt="Uploaded" />
+    <div id="nameOverlay"></div>
+  </div>
 
   <script>
-    const canvas = document.getElementById('finalCanvas');
-    const ctx = canvas.getContext('2d');
-    const backgroundImage = new Image();
-    backgroundImage.src = 'background.png';
+    const form = document.getElementById('uploadForm');
+    const photoInput = document.getElementById('photoInput');
+    const uploadedPhoto = document.getElementById('uploadedPhoto');
+    const nameOverlay = document.getElementById('nameOverlay');
+    const preview = document.getElementById('preview');
 
-    function generateImage() {
-      const photoFile = document.getElementById('photoInput').files[0];
-      const name = document.getElementById('nameInput').value;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
 
-      if (!photoFile || !name) {
-        alert("Please upload a photo and enter a name.");
-        return;
-      }
+      const name = document.getElementById('nameInput').value.trim();
+      const file = photoInput.files[0];
 
-      const reader = new FileReader();
-      reader.onload = function (e) {
-        const uploadedImage = new Image();
-        uploadedImage.onload = function () {
-          ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+      nameOverlay.textContent = name;
+      preview.style.display = 'inline-block';
 
-          const placeholderX = 40;
-          const placeholderY = 400;
-          const placeholderWidth = 260;
-          const placeholderHeight = 260;
-
-          const imgRatio = uploadedImage.width / uploadedImage.height;
-          const boxRatio = placeholderWidth / placeholderHeight;
-
-          let drawWidth, drawHeight;
-          if (imgRatio > boxRatio) {
-            drawHeight = placeholderHeight;
-            drawWidth = drawHeight * imgRatio;
-          } else {
-            drawWidth = placeholderWidth;
-            drawHeight = drawWidth / imgRatio;
-          }
-
-          const offsetX = placeholderX + (placeholderWidth - drawWidth) / 2;
-          const offsetY = placeholderY + (placeholderHeight - drawHeight) / 2;
-
-          ctx.drawImage(uploadedImage, offsetX, offsetY, drawWidth, drawHeight);
-
-          ctx.font = "bold 26px Arial";
-          ctx.fillStyle = "#000";
-          ctx.textAlign = "center";
-          ctx.fillText(name, placeholderX + placeholderWidth / 2, placeholderY + placeholderHeight + 35);
-
-          const downloadLink = document.getElementById('downloadLink');
-          downloadLink.href = canvas.toDataURL();
-          downloadLink.style.display = "inline-block";
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+          uploadedPhoto.src = event.target.result;
+          uploadedPhoto.style.display = 'block';
+          nameOverlay.style.top = '520px'; // Show name below image
         };
-        uploadedImage.src = e.target.result;
-      };
-      reader.readAsDataURL(photoFile);
-    }
-
-    backgroundImage.onload = () => {
-      ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-    };
+        reader.readAsDataURL(file);
+      } else {
+        uploadedPhoto.style.display = 'none';
+        nameOverlay.style.top = '320px'; // Center name in photo box
+      }
+    });
   </script>
-
 </body>
 </html>
