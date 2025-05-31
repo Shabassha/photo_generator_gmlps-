@@ -63,6 +63,10 @@
       color: #666;
       margin: 1rem;
     }
+    
+    #action-buttons {
+      margin-top: 1rem;
+    }
   </style>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
@@ -80,17 +84,20 @@
     <br/>
     <input type="text" id="nameInput" placeholder="കുട്ടിയുടെ പേര് എഴുതുക" />
     <br/>
-    <button onclick="generatePoster()">പോസ്റ്റർ തയ്യാറാക്കുക</button>
-    <button onclick="downloadImage()">ഡൗൺലോഡ് ചെയ്യുക</button>
     <p id="loadingText" class="loading">പ്രവർത്തിക്കുന്നു... കാത്തിരിക്കുക</p>
     <p id="errorText" class="loading" style="color: red;"></p>
   </div>
 
   <div id="crop-container">
     <img id="crop-image" />
-    </div>
+  </div>
 
   <canvas id="posterCanvas" width="898" height="670"></canvas>
+
+  <div id="action-buttons">
+    <button onclick="generatePoster()">പോസ്റ്റർ തയ്യാറാക്കുക</button>
+    <button onclick="downloadImage()">ഡൗൺലോഡ് ചെയ്യുക</button>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
   <script>
